@@ -1,0 +1,195 @@
+---
+title: "Practica 1"
+output: html_document
+date: "2023-09-05"
+---
+
+### Ejercicio 1 
+
+```{r}
+library(openintro)
+View(bdims)
+```
+
+#### A. 
+Calculamos las correlaciones muestrales de cada variable de bdims
+
+```{r}
+cor_muestrales = cor(bdims)
+cor_muestrales
+```
+
+#### B. 
+
+Calculamos cuales variables estan mas correlacionadas, para ello basta con recorrer la parte diagonal superior de la matriz de correlacion muestral. 
+
+```{r}
+f_aux <- function(x){
+  if(x > 0){
+    return(x) 
+  }else{
+    return(-x)
+  }
+}
+indice_max <- c(0,0)
+max <- 0
+for (i in 1:24) {
+  for (j in (i+1):25) {
+    if(max < f_aux(cor_muestrales[i,j])){
+      indice_max = c(i,j)
+      max = cor_muestrales[i,j]
+    }
+  }
+}
+cat("Tenemos que las variables", indice_max, "son las que tienen mas correlacion muestral.")
+```
+```{r}
+plot(x = bdims$for_gi,y = bdims$bic_gi,main = "Scatter-plot", xlab = "for_gi",ylab = "bic_gi")
+```
+#### C. 
+Hacemos lo mismo con las de menor correlacion 
+
+```{r}
+indice_min <- c(0,0)
+min <- 1
+for (i in 1:24) {
+  for (j in (i+1):25) {
+    if(min > f_aux(cor_muestrales[i,j])){
+      indice_min = c(i,j)
+      min = cor_muestrales[i,j]
+    }
+  }
+}
+cat("Tenemos que las variables", indice_min, "son las que tienen menor correlacion muestral.")
+```
+```{r}
+plot(x = bdims$thi_gi,y = bdims$age,main = "Scatter-plot", xlab = "thi_gi",ylab = "age")
+```
+`thi_gi` promedio de medida de la parte baja del muslo izquierdo y derecho. 
+
+#### D.
+Hacer un scatter-plot PESO vs ALTURA
+
+```{r}
+plot(x=bdims$hgt,y=bdims$wgt, main= "Peso vs Altura")
+cat("La correlacion muestral entre estas variables es",cor(bdims$wgt,bdims$hgt))
+```
+Si me parece que hay evidencia teorica que este numero descrie adecuadamente la relacion lineal entre anbas variables.
+
+### Ejercicio 4
+
+#### A.
+
+```{r}
+library(datasauRus)
+
+sets <- c("dino","star","circle","slant_up","x_shape")
+for(s in sets){ 
+  df <- datasaurus_dozen[ saurus_dozen$dataset == s, ]
+  plot(df$x,df$y,pch = 20, 
+       main = s,xlab ="x",ylab="y")
+  print(s)
+  print(paste("Media x",mean(datasaurus_dozen$x),"Media y",mean(datasaurus_dozen$y)))
+  print(paste("Desvio estandar x",sd(datasaurus_dozen$x),"Desvio estandar y",sd(datasaurus_dozen$y)))
+  print(paste("Coeficiente de correlacion",cor(datasaurus_dozen$x,datasaurus_dozen$y)))
+}
+```
+
+### Ejercicio 5 
+
+#### A. 
+
+Hacer scartter-plots y medidas de resumen de los datos del paquete `anscombe`.
+
+```{r}
+for (i in 1:4) {
+  plot(x=anscombe[i]$x,y=anscombe[i+4]$y,
+       main = paste("scatter plot anscombe",i,sep=" "),
+       xlab = paste("x",i,sep=""),ylab=paste("y",i,sep=""))
+  print(paste("Media x",mean(anscombe[i]$x)," ","Media y",mean(anscombe[i+4]$y)))
+  print(paste("Desvio estandar x",sd(anscombe[i]$x)," ","Desvio estandar y",sd(anscombe[i+4]$y)))
+  print(paste("Correlacion muestral entre las variables x e y ",cor(anscombe[i]$x,anscombe[i+4]$y)))
+}
+```
+
+#### Obervacion: Notar que para el 4to conjunto las evidencias graficas muestran que no habria una correlacion lineal, sin embargo la medida resumen nos muestra que si la hay, llegamos a la conclucion de no siempre depender de la correlacion muestral para llegar a una conclucion final. 
+
+### Ejericio 7 
+
+#### A. 
+
+```{r}
+n <- 40 
+beta0 <- 5 
+beta1 <- -2
+eps <- rnorm(n,mean = 0, sd = sqrt(3))
+X = rexp(n, rate = 1)
+Y = beta0 + beta1 * X + eps
+x = 0:10 
+y = beta0 + beta1*x
+plot(X,Y,
+     main = "Scatter-plot eps ~ N(0,3)",
+     xlab = "x",ylab = "y")
+lines(x,y,col="green")
+lines(x,y+3,col="red")
+lines(x,y-3,col="red")
+```
+```{r}
+eps <- runif(n,-3,3)
+X = rexp(n, rate = 1)
+Y = beta0 + beta1 * X + eps
+x = 0:10 
+y = beta0 + beta1*x
+y = beta0 + beta1*x
+plot(X,Y,
+     main = "Scatter-plot  eps~U(-3,3)",
+     xlab = "x",ylab = "y")
+lines(x,y,col="green")
+lines(x,y+3,col="red")
+lines(x,y-3,col="red")
+```
+
+Para el caso de $ \epsilon_i - 30 $ ~ $ \Gamma(0.3,0.01)$, luego reescribimos la ecuacion 
+$$ y_i = (\beta_0 + 30) + \beta_1 *x_i + (\epsilon_i-30) = \beta^{'}_0 + \beta^{'}_1*x_i + \epsilon^{'}_i $$
+```{r}
+eps_prima <- rgamma(n,0.3,0.01)
+beta0_prima <- beta0+30
+X = rexp(n, rate = 1)
+Y <- beta0_prima + beta1*X + eps_prima 
+x <- 0:10 
+y <- beta0_prima + beta1*x
+plot(X,Y,
+     main = "Scatter-plot  eps_prima~G(0.3,0.01)",
+     xlab = "x",ylab = "y")
+lines(x,y,col="green")
+```
+
+```{r}
+beta0 <- 5 
+beta1 <- -2
+eps <- rnorm(n,mean = 0, sd = sqrt(25))
+X = rexp(n, rate = 1)
+Y = beta0 + beta1 * X + eps
+x = 0:10 
+y = beta0 + beta1*x
+plot(X,Y,
+     main = "Scatter-plot eps ~ N(0,25)",
+     xlab = "x",ylab = "y")
+lines(x,y,col="green")
+lines(x,y+25,col="red")
+lines(x,y-25,col="red")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

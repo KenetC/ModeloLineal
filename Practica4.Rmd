@@ -1,0 +1,447 @@
+---
+title: "Practica 4"
+output: html_document
+date: "2023-09-10"
+---
+
+### Ejercicio 1
+
+#### A. 
+
+```{r}
+set.seed(1234)
+```
+Generamos los datos: 
+
+```{r}
+b0 <- 5 
+b1 <- 1 
+b2 <- 3 
+sigma <- 1 
+generacion <- function(n){
+  X1 <- round(runif(n,0,10),2)
+  X2 <- round(runif(n,0,10),2)
+  Y <- b0 + b1 * X1 + b2 * X2 + rnorm(n,0,sigma)
+  data <- data.frame(
+      "X1" = X1,
+      "X2" = X2,
+      "Y" = Y
+  )  
+  return(data)
+}
+
+data1 <- generacion(10)
+ajuste1 <- lm(data1$Y~data1$X1 + data1$X2)
+summary(ajuste1)
+# Podemos calcular el estimador de sigma 2 a mano 
+X <- model.matrix(ajuste1)
+p <-  dim(X)[2]
+sum(ajuste1$residuals^2)/(n - p) # sigma^2
+```
+
+#### B. 
+```{r}
+n <- 10
+N <- 1000
+simulacion <- function(N,n,X1,X2){
+  #Fijamos X primero 
+  b0 <- 5 
+  b1 <- 1 
+  b2 <- 3 
+  sigma <- 1 
+  b1s <- c()
+  b2s <- c()
+  sigmas <- c()
+  for (i in 1:N) {
+    Y <- b0 + b1 * X1 + b2 * X2 + rnorm(n,0,sigma)
+    ajuste <- summary(lm(Y~ X1 + X2))
+    b1s[i] <- ajuste$coefficients[2]
+    b2s[i] <- ajuste$coefficients[3]
+    sigmas[i] <- ajuste$sigma
+  }
+  res1 <- data.frame(
+    "b1s" = b1s,
+    "b2s" = b2s,
+    "sigmas" = sigmas
+  )
+  return(res1)
+}
+d2 <- simulacion(N,n,data1$X1,data1$X2)
+hist(d2$b1s, main = "Histograma de B1",freq = FALSE,
+     xlab = expression(hat(beta)[1]))
+
+# No son los valores reales de la esperanza y varianza, es la estimacion, los reales se calcularian con la varianza = 1. 
+print("Esperanza y varianza muestrales de b1:")
+print(paste("E(b1):",mean(d2$b1s),"V(b1)",var(d2$b1s)))
+varianza_beta1.hat_verdadera <- sigma**2 *(solve(t(X)%*%X))[2,2]
+print("Esperanza y Varianza real de b1:")
+print(paste("E(b1):",1,"V(b1)",varianza_beta1.hat_verdadera))
+
+hist(d2$b2s, main = "Histograma de B2",freq = FALSE,
+     xlab = expression(hat(beta)[2]))
+hist(d2$sigmas, main = "Histograma de sigma",freq = FALSE,
+     xlab = expression(hat(sigma)))
+```
+
+```{r}
+Xprima <- solve(t(X)%*%X)[2,2]
+t_b1 <- (d2$b1s - b1)/ (d2$sigmas * sqrt(Xprima) )
+hist(t_b1,main= "Histograma de T_b1",freq = FALSE,xlab = expression(T))
+lines(seq(-10,10,0.1),dnorm(seq(-10,10,0.1),0,1),col="red")
+lines(seq(-10,10,0.1),dt(seq(-10,10,0.1),N-p),col="green")
+```
+#### I. 
+IC de 90% de $\beta_1$
+
+```{r}
+IC_b1 <- function(alpha,b1,X,sigma){
+  t <- qt(1-alpha/2,length(X)-3)
+  meanX <- mean(X)
+  tseb1 <- t * sigma *sqrt(Xprima) 
+  res <- c(b1 - tseb1 ,b1 + tseb1)
+  return(res)
+}
+P <- 0
+alpha <- 0.1
+for (i in 1:N) {
+  Ic <- IC_b1(0.1,d2$b1s[i],X1,d2$sigmas[i])
+  if(Ic[1] < 1 & 1 <Ic[2]){
+    P <- P + 1   
+  }
+}
+print(P / N)
+
+## Otra forma mas simplificada de resolverlo 
+LI1 <- d2$b1s - qt(1-alpha/2,df=n-p) * d2$sigmas * sqrt((solve(t(X)%*%X))[2,2])
+LS1 <- d2$b1s + qt(1-alpha/2,df=n-p) * d2$sigmas * sqrt((solve(t(X)%*%X))[2,2])
+#mean(b1>LI1 & b1<LS1)
+```
+
+IC de 90% $\beta_2 $
+```{r}
+LI2 <- d2$b2s - qt(1-alpha/2,df=n-p) * d2$sigmas * sqrt((solve(t(X)%*%X))[3,3])
+LS2 <- d2$b2s + qt(1-alpha/2,df=n-p) * d2$sigmas * sqrt((solve(t(X)%*%X))[3,3])
+mean(LI2<b2 & b2 <LS2)
+```
+
+Proporcion de veces que tanto $\beta_1$ como $\beta_2$ pertenecen a sus respectivos intervalos: 
+
+```{r}
+mean(b2>LI2 & b2<LS2& b1>LI1 & b1<LS1)
+```
+
+### Ejercicio 2 
+
+Repetir el experimento pero con n = 150 
+
+```{r}
+n<-150
+N<-1000 
+data2 <- generacion(n)
+ajuste2 <- lm(data2$Y~data2$X1 + data2$X2)
+d3 <- simulacion(N,n,data2$X1,data2$X2)
+X <- model.matrix(ajuste2)
+p <-  dim(X)[2]
+
+LI1 <- d3$b1s - qt(1-alpha/2,df=n-p) * d3$sigmas * sqrt((solve(t(X)%*%X))[2,2])
+LS1 <- d3$b1s + qt(1-alpha/2,df=n-p) * d3$sigmas * sqrt((solve(t(X)%*%X))[2,2])
+print(paste("promedio de beta1 en IC(90%)",mean(b1>LI1 & b1<LS1)))
+
+LI2 <- d3$b2s - qt(1-alpha/2,df=n-p) * d3$sigmas * sqrt((solve(t(X)%*%X))[3,3])
+LS2 <- d3$b2s + qt(1-alpha/2,df=n-p) * d3$sigmas * sqrt((solve(t(X)%*%X))[3,3])
+print(paste("promedio de beta2 en IC(90%)",mean(LI2<b2 & b2 <LS2)))
+
+mean(b2>LI2 & b2<LS2& b1>LI1 & b1<LS1)
+```
+
+### Ejercicio 3 
+
+Repetir el experimento anterior tomando $ \epsilon_i =  v_i - 1$ donde $v_i$ ~ $E(1)$ 
+
+```{r}
+n <- 10
+N <- 1000
+
+b0 <- 5 
+b1 <- 1 
+b2 <- 3 
+sigma <- 1 
+generacion2 <- function(n){
+  X1 <- round(runif(n,0,10),2)
+  X2 <- round(runif(n,0,10),2)
+  v <- rexp(n,1)
+  Y <- b0 + b1 * X1 + b2 * X2 + (v - 1)
+  data <- data.frame(
+      "X1" = X1,
+      "X2" = X2,
+      "Y" = Y
+  )  
+  return(data)
+}
+
+data3 <- generacion(n)
+d3 <- simulacion(N,n,data3$X1,data3$X2)
+hist(d3$b1s, main = "Histograma de B1",freq = FALSE,
+     xlab = expression(hat(beta)[1]))
+ajuste3 <- lm(data3$Y~ data3$X1 + data3$X2)
+X <- model.matrix(ajuste3)
+Xprima <- solve(t(X)%*%X)
+# No son los valores reales de la esperanza y varianza, es la estimacion, los reales se calcularian con la varianza = 1. 
+print("Esperanza y varianza muestrales de b1:")
+print(paste("E(b1):",mean(d3$b1s),"V(b1)",var(d3$b1s)))
+varianza_beta1.hat_verdadera <- sigma**2 *(Xprima)[2,2]
+print("Esperanza y Varianza real de b1:")
+print(paste("E(b1):",1,"V(b1)",varianza_beta1.hat_verdadera))
+
+hist(d3$b2s, main = "Histograma de B2",freq = FALSE,
+     xlab = expression(hat(beta)[2]))
+hist(d3$sigmas, main = "Histograma de sigma",freq = FALSE,
+     xlab = expression(hat(sigma)))
+```
+
+```{r}
+t_b1 <- (d3$b1s - b1)/ (d3$sigmas * sqrt(Xprima[2,2]) )
+hist(t_b1,main= "Histograma de T_b1",freq = FALSE,xlab = expression(T))
+lines(seq(-10,10,0.1),dnorm(seq(-10,10,0.1),0,1),col="red")
+lines(seq(-10,10,0.1),dt(seq(-10,10,0.1),N-p),col="green")
+```
+
+```{r}
+alpha <- 0.1
+LI1 <- d3$b1s - qt(1-alpha/2,df=n-p) * d3$sigmas * sqrt((solve(t(X)%*%X))[2,2])
+LS1 <- d3$b1s + qt(1-alpha/2,df=n-p) * d3$sigmas * sqrt((solve(t(X)%*%X))[2,2])
+print(paste("promedio de beta1 en IC(90%)",mean(b1>LI1 & b1<LS1)))
+
+LI2 <- d3$b2s - qt(1-alpha/2,df=n-p) * d3$sigmas * sqrt((solve(t(X)%*%X))[3,3])
+LS2 <- d3$b2s + qt(1-alpha/2,df=n-p) * d3$sigmas * sqrt((solve(t(X)%*%X))[3,3])
+print(paste("promedio de beta2 en IC(90%)",mean(LI2<b2 & b2 <LS2)))
+
+mean(b2>LI2 & b2<LS2& b1>LI1 & b1<LS1)
+```
+
+### Ejericio 4 
+
+Cargamos los datos 
+
+```{r}
+setwd("~/Documents/FCEyN/1Modelo Lineal/Datos/")
+paralel <- read.csv("paralel.csv")
+names(paralel)
+paralel <- as.data.frame(paralel)
+```
+
+```{r}
+n1 <- length(paralel$x1)
+n2 <- length(paralel$x2)
+y <- c(paralel$y1,paralel$y2)
+#fabricamos la matriz de disenio a mano
+X <- matrix(0,n1+n2,2)
+X[1:n1,1] <- rep(1,n1)
+X[(n1+1):(n1+n2),2] <- rep(1,n2)
+
+ajuste <- lm(y~X-1) ## No queremos ajustar con intercept ?que pasa si ajusto con intercept?
+summary(ajuste)
+p <- dim(X)[2]
+n <- length(y)
+s2 <- sum(ajuste$residuals^2)/(n-p)
+s2 <- summary(ajuste)$sigma^2 
+a <- c(1,-1)
+#construimos el estadistico del test en este caso
+TE <- (t(a)%*%(ajuste$coefficients))/sqrt(s2*t(a)%*%solve(t(X)%*%X)%*%a) ## ver tema vector, matriz, dimension
+
+pvalor <- 2*pt(TE, df=n-p,lower.tail = FALSE)
+
+## Funcion que sirve para testear H_0: a^T beta = c versus H_0: a^T beta != c
+test.cl.beta <- function(X,y,a,c)
+{
+  ajuste <- lm(y~X-1)
+  summary(ajuste)
+  p <- dim(X)[2]
+  n <- length(y)
+  s2 <- sum(ajuste$residuals^2)/(n-p)
+  
+  TE <- (t(a)%*%(ajuste$coefficients)-c)/sqrt(s2*t(a)%*%solve(t(X)%*%X)%*%a)
+  
+  pvalor <- 2*pt(abs(TE), df=n-p,lower.tail = FALSE)
+  pvalor
+  
+}
+test.cl.beta(X,y,c(1,-1),c=0)
+t.test(paralel$y1,paralel$y2,var.equal = TRUE)
+```
+
+### Ejercicio 5 
+
+Veamos si las rectas son o no paralelas 
+
+```{r}
+X <- matrix(0,n1+n2,2)
+X[1:n1,1] <- paralel$x1
+X[(n1+1):(n1+n2),2] <- paralel$x2
+
+test.cl.beta(X,y,c(1,-1),c=0)
+```
+Hay evidencia de que no son paralelas
+
+### Ejercicio 6 
+
+Cargamos los datos 
+```{r}
+setwd("~/Documents/FCEyN/1Modelo Lineal/Datos/")
+salary <- read.csv("salary.csv")
+names(salary)
+salary <- as.data.frame(salary)
+```
+
+#### A.
+
+```{r}
+boxplot(Salary ~ Sex, data = salary,
+        main = "Salario por sexo", xlab = "Sexo", ylab = "Salario",
+        names = c("Hombre","Mujer"))
+boxplot(salary$Salary ~ salary$Sex + salary$Rank, 
+        main = "Salario por sexo:rank",xlab="Sexo:Rank",ylab="Salario",
+        names = c("H:Assist","M:Assist","H:Assoc","M:Assoc","H:Full","M:Full"))
+```
+
+#### B.
+
+```{r}
+
+```
+
+#### C.
+
+Realizar un ajuste lineal para el salario esperadi usando las variables `Sex` y `Year`
+
+i Estimadores puntuales e intervalos de confianza para los parametros $\beta_1,\beta_2,\beta_3$ y para la varianza del error del modelo lineal que se propone para los datos, $\sigma_2$
+
+```{r}
+# Estimadores puntuales 
+ajusS <- lm(Salary~ factor(Sex) + Year,data = salary)
+ajusteS <- summary(ajusS)
+est_b1 <- ajusteS$coefficients[1]
+est_b2 <- ajusteS$coefficients[2]
+est_b3 <- ajusteS$coefficients[3]
+est_sigma <- ajusteS$sigma
+print(paste("Estimador beat1",est_b1," Estimador beat2",est_b2," Estimador beat3",est_b3," Estimador sigma",est_sigma))
+
+# intervalos de confianza
+alpha <- 0.1
+confint(ajusS,level = 1-alpha)
+
+#Summary 
+ajusteS
+```
+ii. Corresponden a $H_0:\beta_i = 0$ vs $H_1:\beta_i \neq 0$ 
+
+```{r}
+X <- model.matrix(ajusS)
+n <- dim(X)[1]
+p <- dim(X)[2]
+a <- c(0,1,0)
+#estadistico_T <- (est_b1)/(est_sigma*sqrt((solve(t(X)%*%X))[2,2]))
+TE <- (t(a) %*% (ajusS$coefficients))/(est_sigma*sqrt(t(a)%*%solve(t(X)%*%X)%*%a))
+pvalor <- 2*pt(TE, df=n-p,lower.tail = FALSE)
+print(paste("p-valor del test, para i=2:",pvalor))
+```
+
+iii 
+
+```{r}
+modeloHombres = c(ajusteS$coefficients[1]+ajusteS$coefficients[2],ajusteS$coefficients[3])
+
+modeloMujeres = c(ajusteS$coefficients[1],ajusteS$coefficients[3])
+
+plot(modeloHombres[1] + modeloHombres[2]*x,col="blue",type = "l")
+lines(modeloMujeres[1]+ modeloMujeres[2]*x,col="pink")
+
+print(paste("Diferencia entre las ordenadas al origen:",modeloHombres[1]-modeloMujeres[1]))
+```
+
+iv
+```{r}
+indH <- salary$Sex == 1 
+indM <- salary$Sex == 0
+modeloH <- lm(salary$Salary[indH]~salary$Year[indH])
+modeloM <- lm(salary$Salary[indM]~salary$Year[indM])
+
+plot(y = salary$Salary[indH],x=salary$Year[indH],col="blue")
+lines(modeloH$coefficients[1] + modeloH$coefficients[2]*x,col="blue")
+
+plot(y = salary$Salary[indM],x=salary$Year[indM],col="pink")
+lines(modeloM$coefficients[1] + modeloM$coefficients[2]*x,col="pink")
+```
+Primero las pendientes pueden ser diferentes, y lo son, segundo perdemos esta generalidad, de poder separar en generos osea perdemos una variable binaria que diferencia entre ambos sexos. 
+
+v 
+
+Podemos conciderarel siguiente modelo para poder separa tanto la ordenada al origen y la pendiente dependiendo de la variable binaria 
+
+$$ E[Salary|Sex,Year] = \beta_1 + \beta_2 Sex + \beta_3  Year + \beta_4(Year*Sex) $$
+```{r}
+Sex <-factor(salary$Sex)
+Year <- salary$Year
+ajusteSY <- lm(salary$Salary~ Sex*Year)
+summary(ajusteSY)
+```
+Vemos que el pvalor de $\beta_4$ no es menor que 0 por lo que podemos decir que no es significativamente importante. 
+
+#### D. 
+
+EL modelo para este caso, donde rank es una variable `discreta`, seria 
+
+$$ E[Salary|Sex,Year,Rank] = \beta_1 + \beta_2 Sex + \beta_3  Year + \beta_4 Rank_2 + \beta_5 Rank_3 $$
+```{r}
+rank <- factor(salary$Rank)
+ajusteD <- lm(salary$Salary ~ Sex + salary$Year + rank)
+
+summary(ajusteD)
+```
+
+Veamos la matriz de disenio para este modelo 
+```{r}
+X <- model.matrix(ajusteD)
+print(X)
+```
+Vemos si la variable sex tiene una influencia sobre rank una pendiente
+
+```{r}
+ajusteD2 <- lm(salary$Salary ~ Year + Sex*rank)
+summary(ajusteD2)
+```
+
+2D 
+Haremos un modelo usando como variables predictoras a a sexo y rank 
+```{r}
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

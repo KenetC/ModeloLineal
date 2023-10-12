@@ -1,0 +1,159 @@
+---
+title: "Practica 2"
+output: html_document
+date: "2023-09-07"
+---
+
+### Ejercicio 4  
+
+Primero cargamos los datos 
+```{r}
+data <- data.frame("x" = c(10.98,11.13,12.51,8.4,9.27,8.73,6.36,8.5,7.82,9.14,8.24,12.19,11.88,9.57,10.94,9.58,10.09,8.11,6.83,8.88,7.68,8.47,8.86,10.36,11.08),
+           "y" = c(35.3,29.7,30.8,58.8,61.4,71.3,74.4,76.7,70.7,57.5,46.4,28.9,28.1,39.1,46.8,48.5,59.3,70,70,74.5,72.1,58.1,44.6,33.4,28.6) )
+
+plot(data$y ~ data$x,
+     main = "Scatter-plot",
+     xlab= "# valor consumido", ylab = "promedio mesual de temperatura atmosferica")
+
+print(paste("Media x",mean(data$x)," Media y",mean(data$y)," Desvio estandar x",sd(data$x)," Desvio estandar y",sd(data$y)))
+```
+
+
+```{r}
+ajuste1 <- lm(data$y ~ data$x)
+summary(ajuste1)
+```
+
+Calcular el estimador de $ \sigma^2 $. 
+
+```{r}
+b0 <- ajuste1$coefficients[1]
+b1 <- ajuste1$coefficients[2] 
+est_sigma <- function(Y,X,b0,b1){
+  n <- length(Y)
+  residuos <- (Y- (b0 + b1*X))**2
+  return(sum(residuos)/(n-2))
+} 
+est_sigma2 <- est_sigma(data$y,data$x,b0,b1)
+print(paste("Estimador sigma2",est_sigma2,"su raiz ", sqrt(est_sigma2)))
+```
+
+Calcular la matriz de covarianza de los estimadores.
+Usando $Cov(\beta_0,\beta_1|X_1,..,X_n) = -\frac{\sigma^2 \overline{X}}{(n-1)S^{2}_X}$ y $\widehat{\sigma}^2=\sum_{i=1}^{n}r_i^2$
+```{r}
+
+```
+
+Verificar que $ \sum_{i=1}^{n}(Y_i − \widehat{Y}_i ) = 0 $
+
+```{r}
+sum(data$y- (b0 + b1*data$x) )
+```
+Centrar las observaciones $X_i$ y recalcular los estimadores de los parámetros. ¿Con quién coincide $\beta_0$ ?
+¿Cambia el estimador de $\sigma^2$ ? Recalcular la matriz de covarianza de los estimadores y compararla con
+la obtenida en e).
+$$ Y_i = \beta_0 + \beta_1 * \overline{X} + \beta_1*(X_i-\overline{X}) $$
+```{r}
+X_centrada <- data$x - mean(data$x)
+ajuste2 <- lm(data$y ~ X_centrada)
+b_0_prima <- ajuste2$coefficients[1]
+b_1_prima <- ajuste2$coefficients[2]
+summary(ajuste2)
+
+```
+$\widehat{\sigma}^2$ deberia ser el mismo ya que no cambian los residuos, luego no cambiar el valor de estimador, lo cual tiene sentido. 
+
+### Ejercicio 5 
+
+#### A. 
+
+Realizar un diagrama de dispersión que muestre la relación entre el peso medido en kilogramos `(wgt)` y
+la circunferencia de la cadera medida en centimetros `(hip.gi)`, poner el peso en el eje vertical. Describir
+la relación entre la circunferencia de la cadera y el peso.
+
+```{r} 
+library(openintro)
+plot(y=bdims$wgt,x=bdims$hip_gi,
+     main = "Scatter peso medio (Kg)~circunferencia cadera (cm)",
+     xlab = "cifcunferencia cadera cm", ylab="peso medio Kg")
+ajuste3 <- lm(bdims$wgt~bdims$hip_gi)
+summary(ajuste3)
+```
+#### B.
+
+Como cambiaria la relacion si `hip_gi` peso (kg) se midiera en libras. 
+```{r}
+X_libras <- bdims$hip_gi * 2.205 
+ajuste4 <- lm(bdims$wgt ~ X_libras)
+summary(ajuste4)
+print(paste("beta1:",ajuste3$coefficients[2]," ", "beta1_libras:",ajuste4$coefficients[2]," ","beta1_libras * 2.205:",ajuste4$coefficients[2]*2.205))
+```
+
+#### C. 
+Ajustar un modelo lineal para explicar el peso por la circunferencia de cadera, con las variables en
+las unidades originales. Escribir el modelo (con papel y lápiz, con betas y epsilones). Luego, escribir
+el modelo ajustado (sin epsilones). Interpretar la pendiente estimada en términos del problema. La
+respuesta deberı́a contener una frase que comience ası́: ”Según el modelo ajustado, si una persona
+aumenta un cm. de contorno de cadera, en promedio su peso aumentará ... kilogramos”
+
+#### D. 
+```{r}
+x = 0:130
+y = ajuste3$coefficients[1] + ajuste3$coefficients[2] * x
+plot(x=bdims$hip_gi,y=bdims$wgt,
+     main = "Scatter peso medio (Kg)~circunferencia cadera (cm)",
+     xlab = "cifcunferencia cadera cm", ylab="peso medio Kg")
+lines(x=x,y=y,col = "red",type = "l")
+```
+
+#### E. 
+Elegimos una persona adulta fı́sicamente activa entre los estudiantes de primer año de la facultad. Su
+contorno de cadera mide 100 cm. Predecir su peso en kilogramos
+
+````{r}
+peso_estimado <- ajuste3$coefficients[1] + ajuste3$coefficients[2] * 100 
+print(paste("Su peso estimado seria de",peso_estimado,"Kg"))
+```
+#### F. 
+Realmente pesaba 81 kg, calcular el residuo.
+
+
+```{r}
+residuo <- 81-peso_estimado
+print(paste("El residuo seria de",residuo))
+```
+#### H. 
+Calcular el estimador (insesgado) de $ \sigma^2 $
+
+```{r}
+s_ajuste3 <- summary(ajuste3)
+s_ajuste3
+```
+
+#### I. 
+
+Hallar un intervalo de confianza para la pendiente de la recta, $\beta_1$ , asumiendo que los errores del modelo
+tienen distribución normal.
+
+```{r}
+IC_b1 <- function(alpha,b1,X,sigma){
+  t <- qt(1-alpha/2,length(X)-2)
+  meanX <- mean(X)
+  tseb1 <- t * sigma / sqrt(sum( (X - meanX )**2 ))
+  res <- c(b1-tseb1 ,b1+tseb1)
+  return(res)
+}
+alpha <- 0.05
+IC_b1(alpha,ajuste3$coefficients[2],bdims$hip_gi,s_ajuste3$sigma)
+```
+
+### Ejercicio 6 
+
+#### A. 
+```{r}
+library(alr4)
+
+```
+
+
+
